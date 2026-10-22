@@ -177,10 +177,10 @@ possibleMoves = function(){
     
     // build to suits and expose
     for (i = 0; i < 7; i++){
-        if (build[i].length > 0 && build[i][1]?.u == false && build[i][0].r == 1) {
+        if (build[i].length > 1 && build[i][1].u == false && build[i][0].r == 1) {
             moves.push(Move(MoveBuildToSuitsExpose, i, build[i][0].s))
         }
-        if (build[i].length > 0 && build[i][1]?.u == false && suits[build[i][0].s][0]?.r + 1 == build[i][0].r) {
+        if (build[i].length > 1 && build[i][1].u == false && suits[build[i][0].s][0]?.r + 1 == build[i][0].r) {
             moves.push(Move(MoveBuildToSuitsExpose, i, build[i][0].s))
         }
     }
@@ -246,12 +246,17 @@ possibleMoves = function(){
 
     // build to suits
     for (i = 0; i < 7; i++){
-        if (build[i].length > 0 && build[i][0].r == 1) {
-            moves.push(Move(MoveBuildToSuits, i, build[i][0].s))
-        } 
-        if (build[i].length > 0 && suits[build[i][0].s][0]?.r + 1 == build[i][0].r) { 
-            moves.push(Move(MoveBuildToSuits, i, build[i][0].s))
-        } 
+        if (!(build[i].length > 1 && build[i][1].u == false && build[i][0].r == 1)) { // not b to s expose
+            if (build[i].length > 0 && build[i][0].r == 1) {
+                moves.push(Move(MoveBuildToSuits, i, build[i][0].s))
+            } 
+        }
+        if (!(build[i].length > 1 && build[i][1].u == false && suits[build[i][0].s][0]?.r + 1 == build[i][0].r)) {
+            if (build[i].length > 0 && suits[build[i][0].s][0]?.r + 1 == build[i][0].r) { 
+                moves.push(Move(MoveBuildToSuits, i, build[i][0].s))
+            } 
+        }
+
     } 
 
     // build to build (partial)
