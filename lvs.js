@@ -1,6 +1,8 @@
+const fs = typeof require !== 'undefined' ? require('fs') : null
+
 var test = false;
 
-if (process.argv[2]!==undefined) test = true;
+if (typeof process !== 'undefined' && process.argv[2]!==undefined) test = true;
 
 const keypress = async () => {
   process.stdin.setRawMode(true)
@@ -33,6 +35,54 @@ show = function(){
     }
     console.log();
 
+}
+
+cardImageDir = 'cards/individuals/'
+
+cardDisplayHTML = function(card, offset = 0){
+    var pos = 'position:absolute;top:' + offset + 'px;left:0;'
+    if (card === undefined) return '<div class="card empty" style="' + pos + '"></div>'
+    var src = card.u
+        ? cardImageDir + ['heart','club','diamond','spade'][card.s] + '/' + card.r + '_' + ['heart','club','diamond','spade'][card.s] + '.png'
+        : cardImageDir + 'card%20back/card_back.png'
+    return '<img class="card" style="' + pos + '" src="' + src + '">'
+}
+
+showHTML = function(){
+    var style = '<style>' +
+        '.solitaire{font-family:sans-serif;display:inline-block;background:#0a6b2f;padding:12px}' +
+        '.solitaire .row{display:flex;gap:8px;margin-bottom:16px}' +
+        '.solitaire .pile{position:relative;width:100px;height:144px}' +
+        '.solitaire .build{height:745px}' +
+        '.solitaire .card{display:block;width:100px;height:144px}' +
+        '.solitaire .card.empty{box-sizing:border-box;border:1px dashed #9c9;border-radius:6px}' +
+        '.solitaire .count{position:absolute;top:0;left:0;width:100px;height:144px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;color:#fff;text-shadow:0 0 4px #000,0 0 4px #000}' +
+        '.solitaire .gap{width:100px}' +
+        '</style>'
+
+    // piles are stored top card first, so draw from the back to put the top card last (on top)
+    var pile = function(array, cls, spread, count = 0){
+        var cards = array.length == 0 ? [undefined] : array.slice().reverse()
+        return '<div class="pile ' + cls + '">' +
+            cards.map((c, i) => cardDisplayHTML(c, spread ? i * 40 : 0)).join('') +
+            (count > 0 ? '<span class="count">' + count + '</span>' : '') +
+            '</div>'
+    }
+
+    var html = '<div class="solitaire">' + style
+    html += '<div class="row">' +
+        pile(stock.slice(0, 1), 'stock', false, stock.length) +
+        pile(waste.slice(0, 1), 'waste', false) +
+        '<div class="gap"></div>' +
+        suits.map(s => pile(s.slice(0, 1), 'suit', false)).join('') +
+        '</div>'
+    html += '<div class="row">' + build.map(b => pile(b, 'build', true)).join('') + '</div>'
+    html += '</div>'
+    return html
+}
+
+writeHTML = function(){
+    fs.writeFileSync(__dirname + '/table.html', '<meta http-equiv="refresh" content="1">' + showHTML())
 }
 
 result = function(){
@@ -105,10 +155,8 @@ numgap = function(build){
 
 possibleMoves = function(){
 
-
-    var o = order(build);
-
     // build to build (full)
+    var o = order(build);
     for (i = 0; i < 7; i++){
         if (build[o[i]].length > 0) {
             var head = 0;
@@ -277,15 +325,19 @@ possibleMoves = function(){
     return 0
 }
 
-if (test) {
+if (typeof process === 'undefined') {
+    // running in a browser: the page drives the game
+} else if (test) {
     ;(async () => {
 
         deal()
+        writeHTML()
         var next = 1
         while(next){
             await keypress()
             next = possibleMoves()
             show()
+            writeHTML()
         }
 
     })().then(process.exit)
