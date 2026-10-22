@@ -35,7 +35,7 @@
         }
 
         nextButton.onclick = function () {
-            if (possibleMoves() == 0) nextButton.disabled = true
+            if (step() == 0) nextButton.disabled = true
             render()
         }
         document.getElementById('new').onclick = newDeal

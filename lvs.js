@@ -136,24 +136,19 @@ numgap = function(build){
     return build.filter(c=>c.length==0).length
 }
 
-// heads = function(build){ // heads of columns with downcards
-//     return build.map((x,i) => numdown(build)[i]>0 ? x[x.length-1-numdown(build)[i]] : null)
-// }
+const MoveBuildToBuild = 0, MoveBuildToBuildPartial = 1, MoveBuildToSuitsExpose = 2, MoveWasteToBuild = 3,
+      MoveWasteToSuits = 4, MoveSuitsToBuild = 5, MoveBuildToSuits = 6, MoveTurnStock = 7
+const moveNames = ['build to build', 'build to build (partial)', 'build to suits and expose', 'waste to build',
+                   'waste to suits', 'suits to build', 'build to suits', 'turn card']
 
-// waiting = function(build){ 
-//     return heads(build).filter(x => x!=null).reduce((a,c)=>c.r>a.r?c:a,{r:1,s:0,u:true})
-// }
+// moveType, fromPile (build 0-6, suits 0-3, -1 for waste/stock), toPile, cardIndex (head of the stack moved)
+Move = function(moveType, fromPile, toPile, cardIndex = 0){
+    return {moveType, fromPile, toPile, cardIndex}
+}
 
-// colour = function(card){
-//     return card.s%2
-// }
-
-// diffcolour = function(card1,card2){
-//     return colour(card1)!=colour(card2)
-// }
-
-
+// returns every available move, best first
 possibleMoves = function(){
+    var moves = []
 
     // build to build (full)
     var o = order(build);
@@ -169,20 +164,11 @@ possibleMoves = function(){
             }
             for (j = 0; j < 7; j++){
                 if (build[j].length == 0 && build[o[i]][head].r == 13 && head < build[o[i]].length - 1){
-                    if (test) console.log("king")
-                    move(build[o[i]],build[j],head)
-                    if (build[o[i]].length > 0) build[o[i]][0].u = true;
-                    return 1                 
+                    moves.push(Move(MoveBuildToBuild, o[i], j, head))
                 }
                 if (build[j].length > 0 && (build[o[i]][head].r +  1 == build[j][0].r) && (build[o[i]][head].s + build[j][0].s)%2 == 1) {  
                     if (numdown(build)[o[i]]>0 || numgap(build)==0){ // don't vacate space unless to expose a downcard or there is no gap
-                        if (test) console.log("full")
-                        move(build[o[i]],build[j],head)
-                        if (build[o[i]].length > 0) build[o[i]][0].u = true;
-                        return 1;                       
-                    }
-                    else {
-                        if (test) console.log("full pending")
+                        moves.push(Move(MoveBuildToBuild, o[i], j, head))
                     }
                 }
             }
@@ -192,16 +178,10 @@ possibleMoves = function(){
     // build to suits and expose
     for (i = 0; i < 7; i++){
         if (build[i].length > 0 && build[i][1]?.u == false && build[i][0].r == 1) {
-            if (test) console.log('build to suits and expose')
-            move(build[i],suits[build[i][0].s])
-            if (build[i].length > 0) build[i][0].u = true;
-            return 1
+            moves.push(Move(MoveBuildToSuitsExpose, i, build[i][0].s))
         }
         if (build[i].length > 0 && build[i][1]?.u == false && suits[build[i][0].s][0]?.r + 1 == build[i][0].r) {
-            if (test) console.log('build to suits and expose')
-            move(build[i],suits[build[i][0].s])
-            if (build[i].length > 0) build[i][0].u = true;
-            return 1
+            moves.push(Move(MoveBuildToSuitsExpose, i, build[i][0].s))
         }
     }
 
@@ -209,13 +189,9 @@ possibleMoves = function(){
     if (waste.length > 0){
         for (i = 0; i < 7; i++){
             if (build[6-o[i]].length > 0 && waste[0].r > 1 && (waste[0].r +  1 == build[6-o[i]][0].r) && (waste[0].s + build[6-o[i]][0].s)%2 == 1) {
-                if (test) console.log('waste to build')
-                move(waste,build[6-o[i]])
-                return 1               
+                moves.push(Move(MoveWasteToBuild, -1, 6-o[i]))
             } else if (waste[0].r == 13 && build[6-o[i]].length == 0) {
-                if (test) console.log('waste to build')
-                move(waste,build[6-o[i]])
-                return 1     
+                moves.push(Move(MoveWasteToBuild, -1, 6-o[i]))
             }                         
         }
     }
@@ -223,13 +199,9 @@ possibleMoves = function(){
     // waste to suits
     if (waste.length > 0){
         if (waste[0].r == 1) {
-            if (test) console.log('waste to suits')
-            move(waste,suits[waste[0].s])
-            return 1
+            moves.push(Move(MoveWasteToSuits, -1, waste[0].s))
         } else if ((suits[waste[0].s][0])?.r == (waste[0].r - 1)) {
-            if (test) console.log('waste to suits')
-            move(waste,suits[waste[0].s])
-            return 1
+            moves.push(Move(MoveWasteToSuits, -1, waste[0].s))
         }
     }
 
@@ -242,9 +214,7 @@ possibleMoves = function(){
                         suits[j][0].r + 1 == build[i][0].r &&
                         (suits[j][0].s + build[i][0].s)%2 == 1
                     ) {
-                        if (test) console.log('worry down')
-                        move(suits[j],build[i])
-                        return 1
+                        moves.push(Move(MoveSuitsToBuild, j, i))
                     }
                 }
             }
@@ -265,9 +235,7 @@ possibleMoves = function(){
                                 suits[k][0].r + 1 == build[i][0].r &&
                                 (suits[k][0].s + build[i][0].s)%2 == 1
                             ) {
-                                if (test) console.log('double worry down')
-                                move(suits[k],build[i])
-                                return 1
+                                moves.push(Move(MoveSuitsToBuild, k, i))
                             }
                         }
                     }
@@ -279,16 +247,10 @@ possibleMoves = function(){
     // build to suits
     for (i = 0; i < 7; i++){
         if (build[i].length > 0 && build[i][0].r == 1) {
-            if (test) console.log('build to suits')
-            move(build[i],suits[build[i][0].s])
-            if (build[i].length > 0) build[i][0].u = true;
-            return 1                
+            moves.push(Move(MoveBuildToSuits, i, build[i][0].s))
         } 
         if (build[i].length > 0 && suits[build[i][0].s][0]?.r + 1 == build[i][0].r) { 
-            if (test) console.log('build to suits')
-            move(build[i],suits[build[i][0].s])
-            if (build[i].length > 0) build[i][0].u = true;
-            return 1                
+            moves.push(Move(MoveBuildToSuits, i, build[i][0].s))
         } 
     } 
 
@@ -304,9 +266,7 @@ possibleMoves = function(){
                             build[i][0].r == build[j][n].r &&
                             build[i][0].s == (build[j][n].s + 2) % 4 
                         ) {
-                            if (test) console.log("partial")
-                            move(build[j],build[i],n-1)
-                            return 1                          
+                            moves.push(Move(MoveBuildToBuildPartial, j, i, n-1))
                         }
                     } 
                 }
@@ -316,13 +276,47 @@ possibleMoves = function(){
 
     // turn stock card
     if (stock.length > 0) {
-        if (test) console.log('turn card')
-        move(stock,waste)
-        waste[0].u = true
-        return 1
+        moves.push(Move(MoveTurnStock, -1, -1))
     }
 
-    return 0
+    return moves
+}
+
+// execute one move from the list
+doMove = function(m){
+    if (test) console.log(moveNames[m.moveType])
+    switch (m.moveType) {
+        case MoveBuildToBuild:
+        case MoveBuildToBuildPartial:
+            move(build[m.fromPile], build[m.toPile], m.cardIndex)
+            break
+        case MoveBuildToSuits:
+        case MoveBuildToSuitsExpose:
+            move(build[m.fromPile], suits[m.toPile])
+            break
+        case MoveWasteToBuild:
+            move(waste, build[m.toPile])
+            break
+        case MoveWasteToSuits:
+            move(waste, suits[m.toPile])
+            break
+        case MoveSuitsToBuild:
+            move(suits[m.fromPile], build[m.toPile])
+            break
+        case MoveTurnStock:
+            move(stock, waste)
+            waste[0].u = true
+            break
+    }
+    if (m.moveType != MoveSuitsToBuild && m.fromPile >= 0 && build[m.fromPile]?.length > 0) build[m.fromPile][0].u = true
+}
+
+// play the best available move; returns 1 if a move was made, 0 if none
+step = function(){
+    var moves = possibleMoves()
+    if (moves.length == 0) return 0
+    doMove(moves[0])
+    return 1
 }
 
 if (typeof process === 'undefined') {
@@ -335,7 +329,7 @@ if (typeof process === 'undefined') {
         var next = 1
         while(next){
             await keypress()
-            next = possibleMoves()
+            next = step()
             show()
             writeHTML()
         }
@@ -347,7 +341,7 @@ if (typeof process === 'undefined') {
 
     for (count = 0; count < 1000000; count++){
         deal()
-        while(possibleMoves() == 1){}
+        while(step() == 1){}
 
         handresult = result()
         total += handresult
