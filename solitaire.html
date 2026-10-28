@@ -9,10 +9,12 @@
     #buttons { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 100; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
     #moves { display: flex; flex-wrap: wrap; gap: 4px 8px; }
     button { font-size: 18px; padding: 6px 16px; }
+    #banner { font-size: 24px; font-weight: bold; display: flex; justify-content: space-between; padding: 4px 12px; background: yellow; }
 </style>
 </head>
 <body>
     <div id="wrap">
+        <div id="banner"></div>
         <div id="table"></div>
         <div id="buttons">
             <div id="moves"></div>
@@ -442,6 +444,24 @@
 
         var tableDiv = document.getElementById('table')
         var movesDiv = document.getElementById('moves')
+        var bannerDiv = document.getElementById('banner')
+        var newButton = document.getElementById('new')
+
+        // meta-game: each deal costs a game; good results win more games
+        var startGames = 5
+        var numgames = startGames
+        var awarded = true // the current deal has already paid out
+
+        try {
+            var saved = parseInt(localStorage.getItem('games'))
+            if (!isNaN(saved) && saved >= 0) numgames = saved
+        } catch (e) {}
+
+        function updateBanner() {
+            bannerDiv.innerHTML = '<span>Games: ' + numgames + '</span><span>Score 10+ Win 2&nbsp; Score 52 Win 10</span>'
+            newButton.textContent = numgames > 0 ? 'New deal' : 'Restart (' + startGames + ' games)'
+            try { localStorage.setItem('games', numgames) } catch (e) {}
+        }
 
         function cardLabel(card) {
             return " A23456789TJQK"[card.r].replace('T', '10') + "♥♣♦♠"[card.s]
@@ -468,7 +488,15 @@
             revealed = moves.length == 0
             tableDiv.innerHTML = showHTML()
             movesDiv.innerHTML = ''
-            if (moves.length == 0) movesDiv.textContent = ''
+            if (moves.length == 0) {
+                movesDiv.textContent = ''
+                if (!awarded) {
+                    awarded = true
+                    var score = result()
+                    numgames += score == 52 ? 10 : score >= 10 ? 2 : 0
+                    updateBanner()
+                }
+            }
             moves.forEach(function (m) {
                 var b = document.createElement('button')
                 b.textContent = moveLabel(m)
@@ -481,11 +509,15 @@
         }
 
         function newDeal() {
+            if (numgames == 0) numgames = startGames // out of games: restart
+            numgames--
+            awarded = false
             deal()
             render()
+            updateBanner()
         }
 
-        document.getElementById('new').onclick = newDeal
+        newButton.onclick = newDeal
 
         newDeal()
     </script>
